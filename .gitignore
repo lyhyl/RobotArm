@@ -57,8 +57,11 @@ sysinfo.txt
 # Builds
 *.apk
 *.unitypackage
-/[Dd]ebug
-/[Rr]elease
+/[Dd]ebug/
+/[Rr]elease/
 
 # Crashlytics generated file
 crashlytics-build.properties
+
+# vscode
+.vscode/
