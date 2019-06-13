@@ -40,8 +40,8 @@ public class Target : MonoBehaviour
 
         // orientation
         Vector4 n = new Vector4(1, 0, 0, 0);
-        Vector4 o = new Vector4(0, 1, 0, 0);
-        Vector4 a = new Vector4(0, 0, 1, 0);
+        Vector4 o = new Vector4(0, -1, 0, 0);
+        Vector4 a = new Vector4(0, 0, -1, 0);
         // float len = target.sqrMagnitude;
         // Vector4 a = new Vector4(target.x / len, target.y / len, target.z / len, 0);
         // Vector4 n = Vector3.Cross(Vector3.up, target).normalized;
@@ -120,9 +120,6 @@ public class Target : MonoBehaviour
         th4 = Mathf.Atan2(-s6 * (n.x * c1 + n.y * s1) - c6 * (o.x * c1 + o.y * s1), o.z * c6 + n.z * s6) - th2 - th3;
 
         float[] th = new float[] { th1, th2, th3, th4, th5, th6 };
-        //Debug.Log($"{th1},{th2},{th3},{th4},{th5},{th6}");
-        GameObject eff = GameObject.Find("effector");
-        Debug.Log($"{eff.transform.position} {transform.position}");
         if (th.Any(x => float.IsNaN(x)))
         {
             Debug.Log("Out of boundary");
@@ -131,7 +128,7 @@ public class Target : MonoBehaviour
         {
             GameObject joint;
             joint = GameObject.Find("joint0");
-            joint.transform.localEulerAngles = new Vector3(0, -th1 / Mathf.PI * 180, 0);
+            joint.transform.localEulerAngles = new Vector3(0, -th1 / Mathf.PI * 180 + 90, 0);
             joint = GameObject.Find("joint1");
             joint.transform.localEulerAngles = new Vector3(-th2 / Mathf.PI * 180 - 90, 0, 0);
             joint = GameObject.Find("joint2");
