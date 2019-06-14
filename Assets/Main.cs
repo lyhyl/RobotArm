@@ -20,35 +20,38 @@ public class Main : MonoBehaviour
         Vector3 right = cam.transform.right;
         Vector3 forward = cam.transform.forward;
 
-        if (Input.GetMouseButtonDown(0))
+        if (Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl))
         {
-            rotCamera = true;
+            if (Input.GetMouseButtonDown(0))
+            {
+                rotCamera = true;
+                prevPos = Input.mousePosition;
+            }
+            if (Input.GetMouseButtonUp(0))
+            {
+                rotCamera = false;
+            }
+            if (rotCamera)
+            {
+                Vector3 d = Input.mousePosition - prevPos;
+                cam.transform.Rotate(Vector3.up, d.x, Space.World);
+                cam.transform.Rotate(Vector3.right, -d.y, Space.Self);
+            }
             prevPos = Input.mousePosition;
-        }
-        if (Input.GetMouseButtonUp(0))
-        {
-            rotCamera = false;
-        }
-        if (rotCamera)
-        {
-            Vector3 d = Input.mousePosition - prevPos;
-            cam.transform.Rotate(Vector3.up, d.x, Space.World);
-            cam.transform.Rotate(Vector3.right, -d.y, Space.Self);
-        }
-        prevPos = Input.mousePosition;
 
-        float dt = 25;
-        var keyMap = new Dictionary<KeyCode, Vector3>(){
-            {KeyCode.D,right},
-            {KeyCode.A,-right},
-            {KeyCode.W,forward},
-            {KeyCode.S,-forward},
-            {KeyCode.Q,Vector3.up},
-            {KeyCode.E,Vector3.down},
-        };
-        foreach (var map in keyMap)
-            if (Input.GetKey(map.Key))
-                cam.transform.position += Time.deltaTime * dt * map.Value;
+            float dt = 25;
+            var keyMap = new Dictionary<KeyCode, Vector3>(){
+                {KeyCode.D,right},
+                {KeyCode.A,-right},
+                {KeyCode.W,forward},
+                {KeyCode.S,-forward},
+                {KeyCode.Q,Vector3.up},
+                {KeyCode.E,Vector3.down},
+            };
+            foreach (var map in keyMap)
+                if (Input.GetKey(map.Key))
+                    cam.transform.position += Time.deltaTime * dt * map.Value;
+        }
     }
 
     void LateUpdate()

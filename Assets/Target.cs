@@ -5,6 +5,8 @@ using System.Linq;
 
 public class Target : MonoBehaviour
 {
+    private float height = 0;
+
     // Start is called before the first frame update
     void Start()
     {
@@ -13,23 +15,27 @@ public class Target : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        Vector3 up = transform.up;
-        Vector3 right = transform.right;
-        Vector3 forward = transform.forward;
-        float dt = 25;
-        var keyMap = new Dictionary<KeyCode, Vector3>(){
-            {KeyCode.L,right},
-            {KeyCode.J,-right},
-            {KeyCode.I,forward},
-            {KeyCode.K,-forward},
-            {KeyCode.U,Vector3.up},
-            {KeyCode.O,Vector3.down},
-        };
-        foreach (var map in keyMap)
-            if (Input.GetKey(map.Key))
-                transform.position += Time.deltaTime * dt * map.Value;
-
+        MoveTarget();
         MoveArm(transform.position);
+    }
+
+    private void MoveTarget()
+    {
+        if (!(Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl)))
+        {
+            float dt = 25;
+            if (Input.GetKey(KeyCode.Z))
+                height -= Time.deltaTime * dt;
+            if (Input.GetKey(KeyCode.C))
+                height += Time.deltaTime * dt;
+
+            Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
+            Plane ground = new Plane(Vector3.up, new Vector3(0, height, 0));
+            ground.Raycast(ray, out float enter);
+            Vector3 position = ray.GetPoint(enter);
+            Debug.Log(position);
+            transform.position = position;
+        }
     }
 
     void MoveArm(Vector3 target)
@@ -102,8 +108,8 @@ public class Target : MonoBehaviour
         th5 = Mathf.Acos((p.x * s1 - p.y * c1 - d4) / d6);
         float s5 = Mathf.Sin(th5), c5 = Mathf.Cos(th5);
 
-        if (Mathf.Abs(s5) < eps)
-            throw new UnityException("boom!");
+        // if (Mathf.Abs(s5) < eps)
+        //     throw new UnityException("boom!");
 
         th6 = Mathf.Atan2((-o.x * s1 + o.y * c1) / s5, -(-n.x * s1 + n.y * c1) / s5);
         float s6 = Mathf.Sin(th6), c6 = Mathf.Cos(th6);
