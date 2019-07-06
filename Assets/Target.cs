@@ -33,7 +33,7 @@ public class Target : MonoBehaviour
             Plane ground = new Plane(Vector3.up, new Vector3(0, height, 0));
             ground.Raycast(ray, out float enter);
             Vector3 position = ray.GetPoint(enter);
-            Debug.Log(position);
+            //Debug.Log(position);
             transform.position = position;
         }
     }
