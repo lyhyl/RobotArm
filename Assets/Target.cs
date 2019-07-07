@@ -6,7 +6,7 @@ using System.Linq;
 public class Target : MonoBehaviour
 {
     private float height = 0;
-    private float angleSpeed = 0.01f; // rad/s
+    private float angleSpeed = 10f; // deg/s
 
     // Start is called before the first frame update
     void Start()
@@ -129,10 +129,22 @@ public class Target : MonoBehaviour
         return new float[] { th1, th2, th3, th4, th5, th6 };
     }
 
+    float[] AngleFromRobotToUnity(float[] angle)
+    {
+        float[] ta = new float[6];
+        ta[0] = -angle[0] / Mathf.PI * 180 + 90;
+        ta[1] = -angle[1] / Mathf.PI * 180 - 90;
+        ta[2] = -angle[2] / Mathf.PI * 180;
+        ta[3] = -angle[3] / Mathf.PI * 180 + 270;
+        ta[4] = -angle[4] / Mathf.PI * 180;
+        ta[5] = -angle[5] / Mathf.PI * 180;
+        return ta;
+    }
+
     void EaseArm(Vector3 target)
     {
         float[] currentAngles = ArmAngles;
-        float[] targetAngles = GetTransformAngles(target);
+        float[] targetAngles = AngleFromRobotToUnity(GetTransformAngles(target));
         float[] moveAngles = new float[6];
         float amount = angleSpeed * Time.deltaTime;
         for (int i = 0; i < 6; i++)
@@ -157,17 +169,17 @@ public class Target : MonoBehaviour
             {
                 GameObject joint;
                 joint = GameObject.Find("joint0");
-                joint.transform.localEulerAngles = new Vector3(0, -value[0] / Mathf.PI * 180 + 90, 0);
+                joint.transform.localEulerAngles = new Vector3(0, value[0], 0);
                 joint = GameObject.Find("joint1");
-                joint.transform.localEulerAngles = new Vector3(-value[1] / Mathf.PI * 180 - 90, 0, 0);
+                joint.transform.localEulerAngles = new Vector3(value[1] , 0, 0);
                 joint = GameObject.Find("joint2");
-                joint.transform.localEulerAngles = new Vector3(-value[2] / Mathf.PI * 180, 0, 0);
+                joint.transform.localEulerAngles = new Vector3(value[2], 0, 0);
                 joint = GameObject.Find("joint3");
-                joint.transform.localEulerAngles = new Vector3(-value[3] / Mathf.PI * 180 + 270, 0, 0);
+                joint.transform.localEulerAngles = new Vector3(value[3] , 0, 0);
                 joint = GameObject.Find("joint4");
-                joint.transform.localEulerAngles = new Vector3(0, -value[4] / Mathf.PI * 180, 0);
+                joint.transform.localEulerAngles = new Vector3(0, value[4], 0);
                 joint = GameObject.Find("joint5");
-                joint.transform.localEulerAngles = new Vector3(-value[5] / Mathf.PI * 180, 0, 0);
+                joint.transform.localEulerAngles = new Vector3(value[5], 0, 0);
             }
         }
         get
