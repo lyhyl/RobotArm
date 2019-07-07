@@ -6,6 +6,7 @@ using System.Linq;
 public class Target : MonoBehaviour
 {
     private float height = 0;
+    private float angleSpeed = 0.01f; // rad/s
 
     // Start is called before the first frame update
     void Start()
@@ -16,7 +17,7 @@ public class Target : MonoBehaviour
     void Update()
     {
         MoveTarget();
-        MoveArm(transform.position);
+        EaseArm(transform.position);
     }
 
     private void MoveTarget()
@@ -38,7 +39,7 @@ public class Target : MonoBehaviour
         }
     }
 
-    void MoveArm(Vector3 target)
+    private float[] GetTransformAngles(Vector3 target)
     {
         float eps = 1e-6f;
         // swap y-axis and z-axis
@@ -125,26 +126,67 @@ public class Target : MonoBehaviour
 
         th4 = Mathf.Atan2(-s6 * (n.x * c1 + n.y * s1) - c6 * (o.x * c1 + o.y * s1), o.z * c6 + n.z * s6) - th2 - th3;
 
-        float[] th = new float[] { th1, th2, th3, th4, th5, th6 };
-        if (th.Any(x => float.IsNaN(x)))
+        return new float[] { th1, th2, th3, th4, th5, th6 };
+    }
+
+    void EaseArm(Vector3 target)
+    {
+        float[] currentAngles = ArmAngles;
+        float[] targetAngles = GetTransformAngles(target);
+        float[] moveAngles = new float[6];
+        float amount = angleSpeed * Time.deltaTime;
+        for (int i = 0; i < 6; i++)
         {
-            Debug.Log("Out of boundary");
+            float dt = targetAngles[i] - currentAngles[i];
+            moveAngles[i] = Mathf.Abs(dt) < amount ? targetAngles[i] : currentAngles[i] + Mathf.Sign(dt) * amount;
         }
-        else
+        ArmAngles = moveAngles;
+    }
+
+    float[] ArmAngles
+    {
+        set
         {
+            if (value == null || value.Length != 6)
+                throw new System.ArgumentException("ArmAngles should be a 6-element array");
+            if (value.Any(x => float.IsNaN(x)))
+            {
+                Debug.Log("Out of boundary");
+            }
+            else
+            {
+                GameObject joint;
+                joint = GameObject.Find("joint0");
+                joint.transform.localEulerAngles = new Vector3(0, -value[0] / Mathf.PI * 180 + 90, 0);
+                joint = GameObject.Find("joint1");
+                joint.transform.localEulerAngles = new Vector3(-value[1] / Mathf.PI * 180 - 90, 0, 0);
+                joint = GameObject.Find("joint2");
+                joint.transform.localEulerAngles = new Vector3(-value[2] / Mathf.PI * 180, 0, 0);
+                joint = GameObject.Find("joint3");
+                joint.transform.localEulerAngles = new Vector3(-value[3] / Mathf.PI * 180 + 270, 0, 0);
+                joint = GameObject.Find("joint4");
+                joint.transform.localEulerAngles = new Vector3(0, -value[4] / Mathf.PI * 180, 0);
+                joint = GameObject.Find("joint5");
+                joint.transform.localEulerAngles = new Vector3(-value[5] / Mathf.PI * 180, 0, 0);
+            }
+        }
+        get
+        {
+            float[] vs = new float[6];
             GameObject joint;
             joint = GameObject.Find("joint0");
-            joint.transform.localEulerAngles = new Vector3(0, -th1 / Mathf.PI * 180 + 90, 0);
+            vs[0] = joint.transform.localEulerAngles.y;
             joint = GameObject.Find("joint1");
-            joint.transform.localEulerAngles = new Vector3(-th2 / Mathf.PI * 180 - 90, 0, 0);
+            vs[1] = joint.transform.localEulerAngles.x;
             joint = GameObject.Find("joint2");
-            joint.transform.localEulerAngles = new Vector3(-th3 / Mathf.PI * 180, 0, 0);
+            vs[2] = joint.transform.localEulerAngles.x;
             joint = GameObject.Find("joint3");
-            joint.transform.localEulerAngles = new Vector3(-th4 / Mathf.PI * 180 + 270, 0, 0);
+            vs[3] = joint.transform.localEulerAngles.x;
             joint = GameObject.Find("joint4");
-            joint.transform.localEulerAngles = new Vector3(0, -th5 / Mathf.PI * 180, 0);
+            vs[4] = joint.transform.localEulerAngles.y;
             joint = GameObject.Find("joint5");
-            joint.transform.localEulerAngles = new Vector3(-th6 / Mathf.PI * 180, 0, 0);
+            vs[5] = joint.transform.localEulerAngles.x;
+            return vs;
         }
     }
 }

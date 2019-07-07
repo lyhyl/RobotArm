@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Drawing;
 using UnityEngine;
 using Windows.Kinect;
 
@@ -52,6 +53,7 @@ public class Main : MonoBehaviour
 
         // open the reader for the body frames
         bodyFrameReader = kinectSensor.BodyFrameSource.OpenReader();
+        bodyFrameReader.FrameArrived += BodyFrameReader_FrameArrived;
 
         // a bone defined as a line between two joints
         bones = new List<Tuple<JointType, JointType>>();
@@ -97,11 +99,6 @@ public class Main : MonoBehaviour
         kinectSensor.Open();
     }
 
-    private void KinectSensor_IsAvailableChanged(object sender, IsAvailableChangedEventArgs e)
-    {
-        Debug.Log($"Available Changed : {e.IsAvailable}");
-    }
-
     // Update is called once per frame
     void Update()
     {
@@ -144,8 +141,47 @@ public class Main : MonoBehaviour
         }
     }
 
-    void LateUpdate()
+    private void KinectSensor_IsAvailableChanged(object sender, IsAvailableChangedEventArgs e)
     {
-        //Camera.main.transform.LookAt(Vector3.zero);
+        Debug.Log($"Available Changed : {e.IsAvailable}");
+    }
+
+    private void BodyFrameReader_FrameArrived(object sender, BodyFrameArrivedEventArgs e)
+    {
+        bool dataReceived = false;
+
+        using (BodyFrame bodyFrame = e.FrameReference.AcquireFrame())
+        {
+            if (bodyFrame != null)
+            {
+                if (bodies == null)
+                {
+                    bodies = new Body[bodyFrame.BodyCount];
+                }
+
+                bodyFrame.GetAndRefreshBodyData(bodies);
+                dataReceived = true;
+            }
+        }
+
+        if (dataReceived)
+        {
+            foreach (Body body in bodies)
+            {
+                if (body.IsTracked)
+                {
+                    IReadOnlyDictionary<JointType, Windows.Kinect.Joint> joints = body.Joints;
+                }
+            }
+        }
+    }
+
+    void OnDestroy()
+    {
+        bodyFrameReader?.Dispose();
+        bodyFrameReader = null;
+
+        kinectSensor?.Close();
+        kinectSensor = null;
     }
 }
