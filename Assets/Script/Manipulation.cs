@@ -3,40 +3,90 @@ using System.Collections.Generic;
 using UnityEngine;
 using System.Linq;
 
-public class Target : MonoBehaviour
+public class Manipulation : MonoBehaviour
 {
+    private Vector3 prevPos;
+    private bool rotCamera = false;
     private float height = 0;
-    private float angleSpeed = 10f; // deg/s
+    private float angleSpeed = 45f; // deg/s
 
-    // Start is called before the first frame update
+    private GameObject target;
+
     void Start()
     {
+        target = GameObject.Find("Target");
     }
 
-    // Update is called once per frame
     void Update()
     {
+        MoveCamera();
         MoveTarget();
-        EaseArm(transform.position);
+        EaseArm(target.transform.position);
+    }
+
+    private void MoveCamera()
+    {
+        Camera cam = Camera.main;
+        Vector3 up = cam.transform.up;
+        Vector3 right = cam.transform.right;
+        Vector3 forward = cam.transform.forward;
+
+        if (Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl))
+        {
+            if (Input.GetMouseButtonDown(0))
+            {
+                rotCamera = true;
+                prevPos = Input.mousePosition;
+            }
+            if (Input.GetMouseButtonUp(0))
+            {
+                rotCamera = false;
+            }
+            if (rotCamera)
+            {
+                Vector3 d = Input.mousePosition - prevPos;
+                cam.transform.Rotate(Vector3.up, d.x, Space.World);
+                cam.transform.Rotate(Vector3.right, -d.y, Space.Self);
+            }
+            prevPos = Input.mousePosition;
+
+            float dt = 25;
+            var keyMap = new Dictionary<KeyCode, Vector3>(){
+                {KeyCode.D,right},
+                {KeyCode.A,-right},
+                {KeyCode.W,forward},
+                {KeyCode.S,-forward},
+                {KeyCode.Q,Vector3.up},
+                {KeyCode.E,Vector3.down},
+            };
+            foreach (var map in keyMap)
+                if (Input.GetKey(map.Key))
+                    cam.transform.position += Time.deltaTime * dt * map.Value;
+        }
     }
 
     private void MoveTarget()
     {
-        if (!(Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl)))
+        float dt = 25;
+        Vector3 position = target.transform.position;
+        if (Input.GetKey(KeyCode.Z))
         {
-            float dt = 25;
-            if (Input.GetKey(KeyCode.Z))
-                height -= Time.deltaTime * dt;
-            if (Input.GetKey(KeyCode.C))
-                height += Time.deltaTime * dt;
-
+            height -= Time.deltaTime * dt;
+            position.y = height;
+        }
+        if (Input.GetKey(KeyCode.C))
+        {
+            height += Time.deltaTime * dt;
+            position.y = height;
+        }
+        if (Input.GetKey(KeyCode.LeftAlt) || Input.GetKey(KeyCode.RightAlt))
+        {
             Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
             Plane ground = new Plane(Vector3.up, new Vector3(0, height, 0));
             ground.Raycast(ray, out float enter);
-            Vector3 position = ray.GetPoint(enter);
-            //Debug.Log(position);
-            transform.position = position;
+            position = ray.GetPoint(enter);
         }
+        target.transform.position = position;
     }
 
     private float[] GetTransformAngles(Vector3 target)
@@ -129,33 +179,56 @@ public class Target : MonoBehaviour
         return new float[] { th1, th2, th3, th4, th5, th6 };
     }
 
-    float[] AngleFromRobotToUnity(float[] angle)
+    private void EaseArm(Vector3 target)
     {
-        float[] ta = new float[6];
-        ta[0] = -angle[0] / Mathf.PI * 180 + 90;
-        ta[1] = -angle[1] / Mathf.PI * 180 - 90;
-        ta[2] = -angle[2] / Mathf.PI * 180;
-        ta[3] = -angle[3] / Mathf.PI * 180 + 270;
-        ta[4] = -angle[4] / Mathf.PI * 180;
-        ta[5] = -angle[5] / Mathf.PI * 180;
-        return ta;
-    }
-
-    void EaseArm(Vector3 target)
-    {
-        float[] currentAngles = ArmAngles;
         float[] targetAngles = AngleFromRobotToUnity(GetTransformAngles(target));
+        if (targetAngles.Any(x => float.IsNaN(x)))
+        {
+            Debug.Log("Out of boundary");
+            return;
+        }
         float[] moveAngles = new float[6];
         float amount = angleSpeed * Time.deltaTime;
         for (int i = 0; i < 6; i++)
-        {
-            float dt = targetAngles[i] - currentAngles[i];
-            moveAngles[i] = Mathf.Abs(dt) < amount ? targetAngles[i] : currentAngles[i] + Mathf.Sign(dt) * amount;
-        }
+            moveAngles[i] = AngleInterpolation(ArmAngles[i], targetAngles[i], amount);
         ArmAngles = moveAngles;
     }
 
-    float[] ArmAngles
+    private float[] AngleFromRobotToUnity(float[] angleInRobot)
+    {
+        float[] angleInUnity = new float[6];
+        float[] offset = { 90, -90, 0, 270, 0, 0 };
+        for (int i = 0; i < 6; i++)
+            angleInUnity[i] = AngleClamp(-angleInRobot[i] / Mathf.PI * 180 + offset[i]);
+        return angleInUnity;
+    }
+
+    private float AngleInterpolation(float currentAngles, float targetAngles, float amount)
+    {
+        float next;
+        float dt = targetAngles - currentAngles;
+        if (Mathf.Abs(dt) < 180)
+        {
+            next = Mathf.Abs(dt) < amount ? targetAngles : currentAngles + Mathf.Sign(dt) * amount;
+        }
+        else
+        {
+            next = Mathf.Abs(dt) < amount ? targetAngles : currentAngles - Mathf.Sign(dt) * amount;
+        }
+        return AngleClamp(next);
+    }
+
+    private float AngleClamp(float angle)
+    {
+        while (angle < 0)
+            angle += 360;
+        while (angle >= 360)
+            angle -= 360;
+        return angle;
+    }
+
+    private float[] armAngles = new float[6];
+    public float[] ArmAngles
     {
         set
         {
@@ -167,15 +240,17 @@ public class Target : MonoBehaviour
             }
             else
             {
+                armAngles = value;
+
                 GameObject joint;
                 joint = GameObject.Find("joint0");
                 joint.transform.localEulerAngles = new Vector3(0, value[0], 0);
                 joint = GameObject.Find("joint1");
-                joint.transform.localEulerAngles = new Vector3(value[1] , 0, 0);
+                joint.transform.localEulerAngles = new Vector3(value[1], 0, 0);
                 joint = GameObject.Find("joint2");
                 joint.transform.localEulerAngles = new Vector3(value[2], 0, 0);
                 joint = GameObject.Find("joint3");
-                joint.transform.localEulerAngles = new Vector3(value[3] , 0, 0);
+                joint.transform.localEulerAngles = new Vector3(value[3], 0, 0);
                 joint = GameObject.Find("joint4");
                 joint.transform.localEulerAngles = new Vector3(0, value[4], 0);
                 joint = GameObject.Find("joint5");
@@ -184,21 +259,7 @@ public class Target : MonoBehaviour
         }
         get
         {
-            float[] vs = new float[6];
-            GameObject joint;
-            joint = GameObject.Find("joint0");
-            vs[0] = joint.transform.localEulerAngles.y;
-            joint = GameObject.Find("joint1");
-            vs[1] = joint.transform.localEulerAngles.x;
-            joint = GameObject.Find("joint2");
-            vs[2] = joint.transform.localEulerAngles.x;
-            joint = GameObject.Find("joint3");
-            vs[3] = joint.transform.localEulerAngles.x;
-            joint = GameObject.Find("joint4");
-            vs[4] = joint.transform.localEulerAngles.y;
-            joint = GameObject.Find("joint5");
-            vs[5] = joint.transform.localEulerAngles.x;
-            return vs;
+            return armAngles;
         }
     }
 }
