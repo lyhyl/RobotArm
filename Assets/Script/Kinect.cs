@@ -9,6 +9,9 @@ public class Kinect : MonoBehaviour
 {
     private bool kinectAvailable = false;
     private bool armCalibrated = false;
+    private float armCalibrationRate;
+    private float armLength;
+    private const float ur5length = 83.9508189f;
     private KinectSensor kinect;
     private BodyFrameReader bodyFrameReader;
     private Body[] bodies;
@@ -41,6 +44,7 @@ public class Kinect : MonoBehaviour
         string debugInfo =
             $"{nameof(kinectAvailable)} : {kinectAvailable}\n" +
             $"{nameof(armCalibrated)} : {armCalibrated}\n" +
+            $"{nameof(armCalibrationRate)} : {armCalibrationRate}\n" +
             $"{nameof(shoulderPosition)} : {shoulderPosition}\n" +
             $"{nameof(handPosition)} : {handPosition}\n";
         GUI.Label(new Rect(0, 0, Screen.width, Screen.height), debugInfo);
@@ -56,8 +60,6 @@ public class Kinect : MonoBehaviour
         // effector start at (-81.7, -0.6, -19.3)
         // Shoulder->Elbow->Wrist->Hand->HandTip
         // Wrist->Thumb
-
-        Debug.Log(nameof(BodyFrameReader_FrameArrived));
 
         bool dataReceived = false;
 
@@ -78,41 +80,46 @@ public class Kinect : MonoBehaviour
             if (body != null)
             {
                 var joints = body.Joints;
-                var shoulder = joints[JointType.ShoulderLeft];
-                var elbow = joints[JointType.ElbowLeft];
-                var wrist = joints[JointType.WristLeft];
-                var hand = joints[JointType.HandLeft];
-                var handTip = joints[JointType.HandTipLeft];
-                var thumb = joints[JointType.ThumbLeft];
+                var shoulder = joints[JointType.ShoulderRight];
+                var elbow = joints[JointType.ElbowRight];
+                var wrist = joints[JointType.WristRight];
+                var hand = joints[JointType.HandRight];
+                var handTip = joints[JointType.HandTipRight];
+                var thumb = joints[JointType.ThumbRight];
 
                 shoulderPosition = new Vector3(shoulder.Position.X, shoulder.Position.Y, shoulder.Position.Z);
                 elbowPositon = new Vector3(elbow.Position.X, elbow.Position.Y, elbow.Position.Z);
                 handPosition = new Vector3(hand.Position.X, hand.Position.Y, hand.Position.Z);
 
-                if (!armCalibrated)
+                var pe = ProjectPointOnLine(shoulderPosition, handPosition, elbowPositon);
+                float dist = Vector3.Distance(pe, elbowPositon);
+                float length = Vector3.Distance(shoulderPosition, handPosition);
+                armCalibrationRate = dist / length;
+                
+                if (!armCalibrated && dist / length < 0.01)
                 {
-                    var pe = ProjectPointOnLine(shoulderPosition, handPosition, elbowPositon);
-                    float dist = Vector3.Distance(pe, elbowPositon);
-                    float length = Vector3.Distance(shoulderPosition, handPosition);
-                    if (length > 0 && dist / length < 0.1)
-                    {
-                        armCalibrated = true;
-                    }
+                    armCalibrated = true;
+                    armLength = length;
                 }
 
-                var diff = handPosition - shoulderPosition;
-                target.transform.position = diff;
+                if (armCalibrated)
+                {
+                    var diff = handPosition - shoulderPosition;
+                    var tar = diff / armLength * ur5length;
+                    var t = tar.z;
+                    tar.z = tar.x;
+                    tar.x = t;
+                    target.transform.position = tar;
+                }
             }
         }
     }
 
-    public static Vector3 ProjectPointOnLine(Vector3 linePoint, Vector3 lineVec, Vector3 point)
+    public static Vector3 ProjectPointOnLine(Vector3 a, Vector3 b, Vector3 c)
     {
-        Vector3 linePointToPoint = point - linePoint;
-
-        float t = Vector3.Dot(linePointToPoint, lineVec);
-
-        return linePoint + lineVec * t;
+        Vector3 ab = b - a;
+        float lensq = ab.sqrMagnitude;
+        return a + Vector3.Dot(c - a, ab) / lensq * ab;
     }
 
     void OnDestroy()

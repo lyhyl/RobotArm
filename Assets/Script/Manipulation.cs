@@ -91,7 +91,6 @@ public class Manipulation : MonoBehaviour
 
     private float[] GetTransformAngles(Vector3 target)
     {
-        float eps = 1e-6f;
         // swap y-axis and z-axis
         target = new Vector3(target.x, target.z, target.y);
 
